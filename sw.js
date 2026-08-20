@@ -1,5 +1,5 @@
 /* CoupleLife Service Worker - 离线缓存核心资源 */
-const CACHE_NAME = 'couplelife-v2';
+const CACHE_NAME = 'couplelife-v3';
 const CORE_ASSETS = [
   './',
   './index.html',

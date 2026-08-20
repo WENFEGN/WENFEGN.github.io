@@ -25,6 +25,16 @@ const DB = (() => {
   }
   function isCloud() { return !!sb; }
 
+  /* 把 Supabase 报错翻译成大白话，让用户知道为什么失败 */
+  function errMsg(error, table) {
+    const m = String((error && (error.message || error)) || '');
+    if (/does not exist|relation/i.test(m)) return '⚠️ 云端没有「' + table + '」表：请先在 Supabase 控制台执行建表 SQL（database/schema.sql）';
+    if (/row-level security|policy|permission denied/i.test(m)) return '⚠️ 云端权限不足：请先在 Supabase 执行安全策略 SQL（database/security.sql）';
+    if (/fetch|network|load failed|failed to fetch|timeout|timed out/i.test(m)) return '⚠️ 连不上云端（supabase.co 在国内可能超时）：请检查网络后重试';
+    if (/jwt|apikey|invalid api key/i.test(m)) return '⚠️ Supabase URL 或 Key 填错了：请到「设置 → 云端连接」里核对';
+    return '⚠️ 云端操作失败：' + m.slice(0, 150);
+  }
+
   /* 通用查询/写入封装 */
   async function select(table, opts = {}) {
     const cid = COUPLE();
@@ -33,7 +43,7 @@ const DB = (() => {
       if (opts.order) q = q.order(opts.order[0], { ascending: opts.order[1] !== false });
       if (opts.limit) q = q.limit(opts.limit);
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) throw new Error(errMsg(error, table));
       return data || [];
     }
     return localRead(table).filter(r => r.couple_id === cid);
@@ -44,7 +54,7 @@ const DB = (() => {
     const full = Object.assign({ couple_id: cid, id: uid(), created_at: new Date().toISOString() }, row, { couple_id: cid });
     if (isCloud()) {
       const { data, error } = await sb.from(table).insert(full).select();
-      if (error) throw error;
+      if (error) throw new Error(errMsg(error, table));
       return data[0] || full;
     }
     const all = localRead(table);
@@ -57,7 +67,7 @@ const DB = (() => {
     const cid = COUPLE();
     if (isCloud()) {
       const { data, error } = await sb.from(table).update(patch).eq('id', id).eq('couple_id', cid).select();
-      if (error) throw error;
+      if (error) throw new Error(errMsg(error, table));
       return data && data[0];
     }
     const all = localRead(table);
@@ -70,7 +80,7 @@ const DB = (() => {
     const cid = COUPLE();
     if (isCloud()) {
       const { error } = await sb.from(table).delete().eq('id', id).eq('couple_id', cid);
-      if (error) throw error;
+      if (error) throw new Error(errMsg(error, table));
       return;
     }
     localWrite(table, localRead(table).filter(r => !(r.id === id && r.couple_id === cid)));
@@ -119,6 +129,14 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add('hidden'), 2400);
 }
+
+/* 全局兜底：任何没被捕获的操作错误都弹出提示，避免"点了没反应" */
+window.addEventListener('unhandledrejection', e => {
+  const r = e.reason;
+  const msg = r && r.message ? r.message : (r ? String(r) : '');
+  if (msg) toast(msg.indexOf('⚠️') === 0 ? msg : '⚠️ ' + msg);
+  e.preventDefault();
+});
 
 function openModal(html) {
   $('#modalBox').innerHTML = html;
@@ -1169,7 +1187,7 @@ const App = {
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
         const path = `${cid}/${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
         const { error } = await window.supabase.storage.from('couplelife').upload(path, file, { contentType: file.type });
-        if (error) throw error;
+        if (error) throw new Error(errMsg(error, table));
         const { data } = window.supabase.storage.from('couplelife').getPublicUrl(path);
         return data.publicUrl;
       } catch (e) {
