@@ -1,0 +1,26 @@
+{
+  "name": "CoupleLife 情侣生活管家",
+  "short_name": "CoupleLife",
+  "description": "专属于你们的二人生活管家：食堂、身心、日子、搬砖、账本",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff5f6",
+  "theme_color": "#ff6b81",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
