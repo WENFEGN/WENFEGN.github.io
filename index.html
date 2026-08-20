@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>CoupleLife · 情侣生活管家</title>
+<meta name="description" content="专属于你们的二人生活管家：食堂、身心、日子、搬砖、账本，还有AI小助手。">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ff6b81">
+<!-- 苹果 PWA 兼容 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CoupleLife">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/style.css?v=5">
+</head>
+<body>
+
+<!-- ═══════════════ 情侣密码锁屏 ═══════════════ -->
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-box">
+    <div class="lock-heart">❤️</div>
+    <h2 id="lockTitle">设置情侣密码</h2>
+    <p id="lockSub" class="lock-sub">首次使用：设置一个只有你俩知道的密码</p>
+    <input id="lockInput" type="password" class="lock-input" placeholder="请输入密码" autocomplete="off" enterkeyhint="go">
+    <input id="lockInput2" type="password" class="lock-input hidden" placeholder="再次输入确认" autocomplete="off" enterkeyhint="go">
+    <button id="lockBtn" class="lock-btn">进入 CoupleLife</button>
+    <label class="lock-remember"><input type="checkbox" id="lockRemember" checked> 记住本设备，下次免密进入</label>
+    <p id="lockErr" class="lock-err hidden"></p>
+  </div>
+</div>
+
+<!-- ═══════════════ 离线提示横幅 ═══════════════ -->
+<div id="offlineBanner" class="offline-banner hidden">📡 当前离线，数据将稍后自动同步</div>
+
+<!-- ═══════════════ 顶部栏 ═══════════════ -->
+<header class="topbar">
+  <div class="topbar-title">
+    <span class="logo-heart">❤️</span>
+    <span>CoupleLife</span>
+    <span class="couple-badge" id="coupleBadge">couple_001</span>
+    <span class="sync-chip hidden" id="syncStatus">💾 本机已保存</span>
+  </div>
+  <button class="icon-btn" id="btnProfile" title="个人资料/设置">👤</button>
+</header>
+
+<!-- ═══════════════ 主内容区 ═══════════════ -->
+<main class="main-content">
+
+  <!-- ─────────── Tab 1 食堂 ─────────── -->
+  <section id="tab-canteen" class="tab-page active">
+    <!-- 忌口红横幅 -->
+    <div id="restrictionBanner" class="restriction-banner hidden">
+      <span class="banner-icon">🚫</span>
+      <span id="restrictionText">TA 忌口：暂无</span>
+    </div>
+
+    <!-- 子页切换 -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="canteen-list">🍽️ 点菜</button>
+      <button class="sub-tab" data-sub="canteen-rank">🏆 排行榜</button>
+      <button class="sub-tab" data-sub="canteen-history">📜 历史</button>
+    </div>
+
+    <!-- 点菜列表 -->
+    <div id="canteen-list" class="sub-page active">
+      <div class="section-head">
+        <h3>今日菜单</h3>
+        <button class="btn btn-primary btn-sm" id="btnAddRecipe">➕ 上传菜谱</button>
+      </div>
+      <div id="recipeList" class="card-grid">
+        <div class="empty-state">还没有菜谱，点击右上角"上传菜谱"添加第一道菜吧 🍳</div>
+      </div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div id="canteen-rank" class="sub-page">
+      <div class="rank-labels" id="rankLabels"></div>
+      <div class="chart-box"><canvas id="recipeRankChart"></canvas></div>
+    </div>
+
+    <!-- 历史订单 -->
+    <div id="canteen-history" class="sub-page">
+      <div class="section-head"><h3>点餐记录</h3></div>
+      <div id="orderHistoryList" class="list-wrap"></div>
+    </div>
+  </section>
+
+  <!-- ─────────── Tab 2 身心 ─────────── -->
+  <section id="tab-health" class="tab-page">
+    <!-- 健康主视图 -->
+    <div id="health-main" class="sub-page active">
+      <div class="health-cards">
+        <div class="person-card">
+          <h4 id="healthNameMale">👦 男方</h4>
+          <div class="bmi-display"><span class="bmi-num" id="bmiMale">--</span><span class="bmi-label">BMI</span></div>
+          <div class="bmi-status" id="bmiStatusMale">--</div>
+          <div class="person-stats">
+            <div><span class="stat-label">身高</span><span class="stat-val" id="heightMale">--</span><span class="stat-unit">cm</span></div>
+            <div><span class="stat-label">今日体重</span><span class="stat-val" id="weightMale">--</span><span class="stat-unit">kg</span></div>
+          </div>
+          <div class="workout-today" id="workoutMale">💪 本月 0 次 · 今日未打卡</div>
+          <div class="person-actions">
+            <button class="btn btn-outline btn-sm" onclick="App.openBodyEdit('male')">✏️ 身高体重</button>
+            <button class="btn btn-primary btn-sm" onclick="App.toggleWorkout('male')">💪 健身打卡</button>
+          </div>
+        </div>
+        <div class="person-card female">
+          <h4 id="healthNameFemale">👧 女方</h4>
+          <div class="bmi-display"><span class="bmi-num" id="bmiFemale">--</span><span class="bmi-label">BMI</span></div>
+          <div class="bmi-status" id="bmiStatusFemale">--</div>
+          <div class="person-stats">
+            <div><span class="stat-label">身高</span><span class="stat-val" id="heightFemale">--</span><span class="stat-unit">cm</span></div>
+            <div><span class="stat-label">今日体重</span><span class="stat-val" id="weightFemale">--</span><span class="stat-unit">kg</span></div>
+          </div>
+          <div class="workout-today" id="workoutFemale">💪 本月 0 次 · 今日未打卡</div>
+          <div class="person-actions">
+            <button class="btn btn-outline btn-sm" onclick="App.openBodyEdit('female')">✏️ 身高体重</button>
+            <button class="btn btn-primary btn-sm" onclick="App.toggleWorkout('female')">💪 健身打卡</button>
+          </div>
+        </div>
+      </div>
+      <div class="section-head"><h3>📈 体重趋势</h3></div>
+      <div class="chart-box"><canvas id="weightChart"></canvas></div>
+      <div class="section-head">
+        <h3>💪 健身统计</h3>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="workoutViewMonth" onclick="App.setWorkoutView('month')">📊 按月</button>
+          <button class="toggle-btn" id="workoutViewYear" onclick="App.setWorkoutView('year')">📈 按年</button>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="workoutChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ─────────── Tab 3 日子 ─────────── -->
+  <section id="tab-days" class="tab-page">
+    <!-- 正计时巨卡 -->
+    <div class="love-counter-card">
+      <div class="counter-title">❤️ 在一起已经</div>
+      <div class="counter-big" id="loveCounter">0 天 0 时 0 分 0 秒</div>
+      <div class="counter-sub" id="loveStartDate">--</div>
+    </div>
+
+    <div class="section-head">
+      <h3>📅 重要日子</h3>
+      <button class="btn btn-primary btn-sm" id="btnAddEvent">➕ 添加</button>
+    </div>
+    <div id="eventList" class="list-wrap">
+      <div class="empty-state">还没有记录重要日子，点"添加"创建一个吧 💝</div>
+    </div>
+
+    <!-- 崽崽档案折叠区 -->
+    <details class="kid-section" id="kidSection">
+      <summary>👶 崽崽档案</summary>
+      <div id="kidBody">
+        <div id="kidProfileArea"></div>
+        <div class="section-head"><h3>📈 成长轨迹</h3><button class="btn btn-outline btn-sm" id="btnAddGrowth">+ 记录</button></div>
+        <div class="chart-box"><canvas id="kidGrowthChart"></canvas></div>
+        <div class="section-head"><h3>🏅 大事记</h3><button class="btn btn-outline btn-sm" id="btnAddMilestone">+ 里程碑</button></div>
+        <div id="milestoneList" class="timeline"></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ─────────── Tab 4 搬砖 ─────────── -->
+  <section id="tab-work" class="tab-page">
+    <div class="work-summary-card" id="nextRestDay">📅 下次双人共同休息日：--</div>
+    <div class="legend-row">
+      <span class="legend-item"><i class="dot dot-blue"></i>夜班</span>
+      <span class="legend-item"><i class="dot dot-purple"></i>晚班</span>
+      <span class="legend-item"><i class="dot dot-green"></i>休息</span>
+      <span class="legend-item"><i class="dot dot-orange"></i>出差</span>
+      <span class="legend-item"><i class="dot dot-gray"></i>白班</span>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="btnPrevMonth">‹</button>
+      <span class="month-title" id="monthTitle">--</span>
+      <button class="icon-btn" id="btnNextMonth">›</button>
+    </div>
+    <div id="workCalendar" class="work-calendar"></div>
+    <div class="section-head"><h3>📋 本月排班明细</h3></div>
+    <div id="scheduleList" class="list-wrap"></div>
+  </section>
+
+  <!-- ─────────── Tab 5 账本 ─────────── -->
+  <section id="tab-ledger" class="tab-page">
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="ledger-list">💰 流水</button>
+      <button class="sub-tab" data-sub="ledger-chart">📊 图表</button>
+    </div>
+
+    <div id="ledger-list" class="sub-page active">
+      <div class="section-head">
+        <h3>记账流水</h3>
+        <button class="btn btn-primary btn-sm" id="btnAddTx">➕ 记账</button>
+      </div>
+      <div id="txList" class="list-wrap"></div>
+    </div>
+
+    <div id="ledger-chart" class="sub-page">
+      <div class="section-head">
+        <h3>📊 收支统计</h3>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="ledgerViewMonth" onclick="App.setLedgerView('month')">📅 按月</button>
+          <button class="toggle-btn" id="ledgerViewYear" onclick="App.setLedgerView('year')">🗓️ 按年</button>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+      <div class="section-head"><h3>📈 累计总收入曲线</h3></div>
+      <div class="chart-box"><canvas id="cumIncomeChart"></canvas></div>
+      <div class="section-head"><h3>🥧 支出分类占比（本月）</h3></div>
+      <div class="chart-box"><canvas id="categoryChart"></canvas></div>
+      <div class="section-head"><h3>🥧 收入分类占比（本月）</h3></div>
+      <div class="chart-box"><canvas id="incomeCategoryChart"></canvas></div>
+    </div>
+
+    <!-- 底部小计栏 -->
+    <div class="ledger-summary">
+      <div class="sum-item"><span class="sum-label">本月总支出</span><span class="sum-val expense" id="monthExpense">¥0.00</span></div>
+      <div class="sum-item"><span class="sum-label">本月总收入</span><span class="sum-val income" id="monthIncome">¥0.00</span></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════ 底部导航 ═══════════════ -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="canteen"><span class="nav-icon">🍽️</span><span class="nav-label">食堂</span><span class="nav-badge hidden" id="badge-canteen"></span></button>
+  <button class="nav-item" data-tab="health"><span class="nav-icon">💪</span><span class="nav-label">身心</span><span class="nav-badge hidden" id="badge-health"></span></button>
+  <button class="nav-item" data-tab="days"><span class="nav-icon">❤️</span><span class="nav-label">日子</span><span class="nav-badge hidden" id="badge-days"></span></button>
+  <button class="nav-item" data-tab="work"><span class="nav-icon">📅</span><span class="nav-label">搬砖</span><span class="nav-badge hidden" id="badge-work"></span></button>
+  <button class="nav-item" data-tab="ledger"><span class="nav-icon">💰</span><span class="nav-label">账本</span><span class="nav-badge hidden" id="badge-ledger"></span></button>
+</nav>
+
+<!-- ═══════════════ 浮动 AI 机器人按钮 ═══════════════ -->
+<button class="ai-fab" id="aiFab">🤖</button>
+
+<!-- ═══════════════ AI 半屏弹窗 ═══════════════ -->
+<div class="ai-sheet-overlay hidden" id="aiSheetOverlay">
+  <div class="ai-sheet" id="aiSheet">
+    <div class="ai-sheet-handle"></div>
+    <div class="ai-sheet-header">
+      <span>🤖 智能小助手</span>
+      <div class="ai-provider-select-wrap">
+        <select id="aiProviderSelect" class="ai-provider-select">
+          <option value="openai">OpenAI (GPT-4-Vision)</option>
+          <option value="deepseek">DeepSeek-VL</option>
+          <option value="kimi">Kimi (Moonshot-Vision)</option>
+          <option value="custom">自定义</option>
+        </select>
+      </div>
+    </div>
+    <div class="ai-sheet-body" id="aiSheetBody">
+      <div class="ai-welcome">
+        <div class="ai-avatar">🤖</div>
+        <p>把图片或链接发给我，我来帮你识别该存入哪个模块～<br><small>也可以选择下面任一方式手动录入</small></p>
+      </div>
+      <div class="ai-actions">
+        <button class="ai-action-btn" id="aiTakePhoto">📷 拍照</button>
+        <button class="ai-action-btn" id="aiPickImage">🖼️ 相册</button>
+        <button class="ai-action-btn" id="aiPasteLink">🔗 粘贴链接</button>
+      </div>
+      <div id="aiManualModules" class="ai-manual hidden">
+        <div class="ai-manual-title">选择存入的模块：</div>
+        <div class="ai-manual-grid" id="aiManualGrid"></div>
+      </div>
+      <div class="ai-preview hidden" id="aiPreviewArea">
+        <img id="aiPreviewImg" alt="预览">
+        <button class="btn btn-primary btn-sm" id="aiAnalyzeBtn">🔍 开始识别</button>
+      </div>
+      <div id="aiResultArea"></div>
+    </div>
+    <input type="file" id="aiFileInput" accept="image/*" capture="environment" class="hidden">
+    <input type="file" id="aiFileInputGallery" accept="image/*" class="hidden">
+  </div>
+</div>
+
+<!-- ═══════════════ 通用弹窗容器 ═══════════════ -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<!-- ═══════════════ Toast ═══════════════ -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/config.js?v=5"></script>
+<script src="js/app.js?v=5"></script>
+</body>
+</html>
